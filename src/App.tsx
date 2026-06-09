@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 // @ts-ignore
-import bgImage from "./assets/images/bg_1781023007774.png";
+import bgImage from "./assets/images/background.png";
 
 // Default configuration placeholders
 const DEFAULT_PSICOLOGO_URL = "";
