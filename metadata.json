@@ -1,0 +1,6 @@
+{
+  "name": "Portal de Atendimento Psicopedagógico - SESI PE",
+  "description": "Landing page institucional moderna e acessível para o Portal de Atendimento Psicopedagógico do SESI Pernambuco.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
