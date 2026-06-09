@@ -187,8 +187,8 @@ export default function App() {
       style={{
         // Dynamic background support
         backgroundImage: `url(${activeBg}), url('/assets/bg.jpg'), url('/assets/bg.png'), linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 30%, #f6fdf9 65%, #fffbf2 100%)`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
+        backgroundSize: "contain",
+        backgroundPosition: "center top",
         backgroundRepeat: "no-repeat",
         backgroundAttachment: "fixed"
       }}
