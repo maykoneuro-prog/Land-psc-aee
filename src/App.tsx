@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 // @ts-ignore
-import bgImage from "./assets/images/bg_1781023007774.png";
+import bgImage from "./assets/images/sesi_bg_original_1781023275603.png";
 
 // Default configuration placeholders
 const DEFAULT_PSICOLOGO_URL = "";
@@ -38,11 +38,66 @@ export default function App() {
 
   // Background Image Configuration
   const [bgInputUrl, setBgInputUrl] = useState<string>(() => {
-    return localStorage.getItem("SESI_PORTAL_BG_URL") || "";
+    const saved = localStorage.getItem("SESI_PORTAL_BG_URL");
+    return (saved && saved.trim() !== "" && saved.trim() !== "undefined") ? saved.trim() : "";
   });
   const [activeBg, setActiveBg] = useState<string>(() => {
-    return localStorage.getItem("SESI_PORTAL_BG_URL") || bgImage;
+    const saved = localStorage.getItem("SESI_PORTAL_BG_URL");
+    return (saved && saved.trim() !== "" && saved.trim() !== "undefined") ? saved.trim() : bgImage;
   });
+  const [bgSize, setBgSize] = useState<string>(() => {
+    return localStorage.getItem("SESI_PORTAL_BG_SIZE") || "contain";
+  });
+
+  const [isDraggingBg, setIsDraggingBg] = useState(false);
+
+  // High-fidelity clientside canvas compressor to fit background under 5MB localStorage limits smoothly
+  const processBgFile = (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      setToastMessage("Por favor, selecione um arquivo de imagem válido (PNG, JPG ou WEBP).");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let width = img.width;
+        let height = img.height;
+        const MAX_WIDTH = 1920;
+        const MAX_HEIGHT = 1080;
+
+        if (width > MAX_WIDTH || height > MAX_HEIGHT) {
+          if (width / height > MAX_WIDTH / MAX_HEIGHT) {
+            height = Math.round(height * (MAX_WIDTH / width));
+            width = MAX_WIDTH;
+          } else {
+            width = Math.round(width * (MAX_HEIGHT / height));
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          try {
+            // Compress to JPEG at 0.75 quality for visual crispness at extreme lightweight footprint
+            const compressed = canvas.toDataURL("image/jpeg", 0.75);
+            setTempBgUrl(compressed);
+            setToastMessage("Nova imagem carregada e otimizada!");
+          } catch (err) {
+            console.error(err);
+            setToastMessage("Erro ao otimizar a imagem.");
+          }
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Google Login and Security states
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
@@ -65,6 +120,7 @@ export default function App() {
   const [tempPsicologoUrl, setTempPsicologoUrl] = useState("");
   const [tempAeeUrl, setTempAeeUrl] = useState("");
   const [tempBgUrl, setTempBgUrl] = useState("");
+  const [tempBgSize, setTempBgSize] = useState("");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Sync temp variables when the config modal is opened
@@ -73,8 +129,9 @@ export default function App() {
       setTempPsicologoUrl(portalPsicologoUrl);
       setTempAeeUrl(portalAeeUrl);
       setTempBgUrl(bgInputUrl);
+      setTempBgSize(bgSize);
     }
-  }, [isConfigOpen, portalPsicologoUrl, portalAeeUrl, bgInputUrl]);
+  }, [isConfigOpen, portalPsicologoUrl, portalAeeUrl, bgInputUrl, bgSize]);
 
   // Toast auto-dismissal
   useEffect(() => {
@@ -155,11 +212,13 @@ export default function App() {
     localStorage.setItem("SESI_PORTAL_PSICOLOGO_URL", tempPsicologoUrl);
     localStorage.setItem("SESI_PORTAL_AEE_URL", tempAeeUrl);
     localStorage.setItem("SESI_PORTAL_BG_URL", tempBgUrl);
+    localStorage.setItem("SESI_PORTAL_BG_SIZE", tempBgSize);
 
     setPortalPsicologoUrl(tempPsicologoUrl);
     setPortalAeeUrl(tempAeeUrl);
     setBgInputUrl(tempBgUrl);
     setActiveBg(tempBgUrl.trim() !== "" ? tempBgUrl : bgImage);
+    setBgSize(tempBgSize);
     
     setIsConfigOpen(false);
     
@@ -185,10 +244,10 @@ export default function App() {
       id="sesi-landing-root"
       className="relative min-h-screen w-full flex flex-col justify-between overflow-x-hidden font-sans select-none bg-[#f1f8fc]"
       style={{
-        // Dynamic background support
-        backgroundImage: `url(${activeBg}), url('/assets/bg.jpg'), url('/assets/bg.png'), linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 30%, #f6fdf9 65%, #fffbf2 100%)`,
-        backgroundSize: "contain",
-        backgroundPosition: "center top",
+        // Dynamic background support with safe quotes wrapping
+        backgroundImage: `url("${activeBg}"), linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 30%, #f6fdf9 65%, #fffbf2 100%)`,
+        backgroundSize: bgSize,
+        backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
         backgroundAttachment: "fixed"
       }}
@@ -239,134 +298,101 @@ export default function App() {
       {/* MAIN CONTAINER */}
       <main 
         id="sesi-content-grid"
-        className="relative z-10 w-full max-w-7xl mx-auto px-6 flex-1 flex items-center justify-center py-6 lg:py-12"
+        className="relative z-10 w-full max-w-5xl mx-auto px-6 flex-1 flex flex-col items-center justify-center py-6 md:py-10 animate-fade-in"
       >
-        {/* Glassmorphism content container perfectly centered on the screen */}
+        {/* Title area, perfectly centered, matching the sketch */}
         <motion.div 
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="w-full max-w-xl flex flex-col select-text"
-          id="hero-floating-box"
+          transition={{ duration: 0.6 }}
+          className="text-center space-y-2 mb-12 select-text"
         >
-          {/* Main Card with smooth glass effect */}
-          <div className="backdrop-blur-md bg-white/80 border border-white/50 shadow-[0_20px_50px_rgba(0,92,169,0.08)] rounded-3xl p-6 md:p-10 flex flex-col gap-6 relative overflow-hidden">
-            
-            {/* Top delicate tagline */}
-            <div className="flex items-center gap-2">
-              <span className="flex h-2 w-2 relative">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#f26522] opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#f26522]"></span>
-              </span>
-              <span className="text-[11px] font-bold tracking-widest text-[#005ca9] uppercase font-display">
-                Portal de Atendimento Psicopedagógico
-              </span>
-            </div>
-
-            {/* HERO SECTION Content */}
-            <div className="space-y-3">
-              <h1 
-                id="hero-title"
-                className="text-4xl md:text-5xl font-display font-extrabold text-slate-800 tracking-tight leading-none"
-              >
-                Acesso aos <br />
-                <span className="bg-gradient-to-r from-[#005ca9] to-[#014178] bg-clip-text text-transparent">
-                  Portais de Atendimento
-                </span>
-              </h1>
-              <p 
-                id="hero-subtitle"
-                className="text-sm md:text-base text-slate-600 font-medium leading-relaxed"
-              >
-                Selecione o seu perfil profissional para acessar o sistema correspondente de forma segura e ágil.
-              </p>
-            </div>
-
-            {/* ACTION PROFILE BUTTONS - Stacked on Mobile, layout changes dynamically */}
-            <div className="flex flex-col gap-4 py-2" id="profile-action-group">
-              
-              {/* BUTTON 1: PSICÓLOGO */}
-              <button
-                onClick={() => handlePortalRedirect("psicologo")}
-                className="group relative w-full flex items-center justify-between p-5 bg-[#005ca9] hover:bg-[#004a8b] text-white rounded-2xl shadow-lg shadow-blue-900/10 hover:shadow-xl hover:shadow-blue-900/20 active:scale-[0.99] transition-all duration-300 cursor-pointer overflow-hidden border border-blue-400/20"
-                id="btn-access-psicologo"
-              >
-                {/* Accent glow on hover */}
-                <div className="absolute right-0 top-0 h-40 w-40 translate-x-12 -translate-y-12 bg-white/10 rounded-full blur-2xl group-hover:bg-white/20 transition-all duration-500" />
-
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-white/10 rounded-xl group-hover:scale-110 transition-transform duration-300 text-white">
-                    <Brain className="w-6 h-6" />
-                  </div>
-                  <div className="text-left">
-                    <div className="text-xs text-blue-100/80 font-semibold tracking-wider uppercase">Fazer Login como</div>
-                    <div className="text-lg font-bold font-display tracking-tight">Sou Psicólogo</div>
-                  </div>
-                </div>
-                <div className="flex items-center justify-center p-2 bg-white/10 group-hover:bg-white/25 rounded-full transition-all duration-300">
-                  <ArrowRight className="w-4 h-4 translate-x-0 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </button>
-
-              {/* BUTTON 2: AEE (Vibrant Orange Institutional Button) */}
-              <button
-                onClick={() => handlePortalRedirect("aee")}
-                className="group relative w-full flex items-center justify-between p-5 bg-[#f26522] hover:bg-[#d95316] text-white rounded-2xl shadow-lg shadow-orange-950/10 hover:shadow-xl hover:shadow-orange-950/20 active:scale-[0.99] transition-all duration-300 cursor-pointer overflow-hidden border border-orange-400/10"
-                id="btn-access-aee"
-              >
-                {/* Accent glow on hover */}
-                <div className="absolute right-0 top-0 h-40 w-40 translate-x-12 -translate-y-12 bg-white/10 rounded-full blur-2xl group-hover:bg-white/20 transition-all duration-500" />
-
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-white/10 rounded-xl group-hover:scale-110 transition-transform duration-300 text-white">
-                    <GraduationCap className="w-6 h-6" />
-                  </div>
-                  <div className="text-left">
-                    <div className="text-xs text-orange-100/80 font-semibold tracking-wider uppercase">Fazer Login como</div>
-                    <div className="text-lg font-bold font-display tracking-tight">Sou Profissional do AEE</div>
-                  </div>
-                </div>
-                <div className="flex items-center justify-center p-2 bg-white/10 group-hover:bg-white/25 rounded-full transition-all duration-300">
-                  <ArrowRight className="w-4 h-4 translate-x-0 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </button>
-
-            </div>
-
-            {/* SEÇÃO INFORMATIVA (DIFERENCIAL 1) */}
-            <div className="pt-4 border-t border-slate-200/60 flex gap-3 text-slate-500 text-xs leading-relaxed" id="section-informative">
-              <Info className="w-5 h-5 text-[#005ca9] shrink-0" />
-              <p className="font-medium text-slate-600">
-                Este portal integra os serviços de Psicologia Escolar e Atendimento Educacional Especializado (AEE), promovendo acolhimento, inclusão e desenvolvimento integral dos estudantes do SESI Pernambuco.
-              </p>
-            </div>
-
-            {/* Micro badges showing institutional commitments representing the bottom values for mobile */}
-            <div className="grid grid-cols-5 gap-1.5 pt-1 text-[10px] text-center font-bold text-[#005ca9]/80 lg:hidden" id="mobile-badges">
-              <div className="bg-blue-50 py-1.5 px-0.5 rounded-lg border border-blue-100/50 flex flex-col items-center gap-0.5">
-                <Heart className="w-3.5 h-3.5 text-red-400 fill-red-400" />
-                <span>Acolhimento</span>
-              </div>
-              <div className="bg-green-50 py-1.5 px-0.5 rounded-lg border border-green-100/50 flex flex-col items-center gap-0.5">
-                <Users className="w-3.5 h-3.5 text-[#00a859]" />
-                <span>Inclusão</span>
-              </div>
-              <div className="bg-yellow-50 py-1.5 px-0.5 rounded-lg border border-yellow-101/50 flex flex-col items-center gap-0.5">
-                <Users className="w-3.5 h-3.5 text-amber-500" />
-                <span>Respeito</span>
-              </div>
-              <div className="bg-purple-50 py-1.5 px-0.5 rounded-lg border border-purple-100/50 flex flex-col items-center gap-0.5">
-                <GraduationCap className="w-3.5 h-3.5 text-indigo-500" />
-                <span>Desenvolvimento</span>
-              </div>
-              <div className="bg-sky-50 py-1.5 px-0.5 rounded-lg border border-sky-100/50 flex flex-col items-center gap-0.5">
-                <Sparkles className="w-3.5 h-3.5 text-sky-500" />
-                <span>Potencial</span>
-              </div>
-            </div>
-
+          <h2 className="text-2xl md:text-3xl font-semibold text-[#003c80] font-sans tracking-tight">
+            Acesso aos
+          </h2>
+          <div className="text-4xl md:text-5xl font-extrabold text-[#00a859] tracking-tight font-display animate-pulse" style={{ color: "#005ca9" }}>
+            Portais de Atendimento
           </div>
+          
+          {/* Green and Blue Split Line under the title */}
+          <div className="flex justify-center items-center my-4 h-[3px]">
+            <div className="w-12 h-full bg-[#00a859] rounded-l-full" />
+            <div className="w-12 h-full bg-[#005ca9] rounded-r-full" />
+          </div>
+          
+          <p className="text-slate-600 text-sm md:text-base font-semibold max-w-lg mx-auto">
+            Selecione o seu perfil para acessar o sistema correspondente.
+          </p>
         </motion.div>
+
+        {/* Dynamic Two Cards Configuration - Center Aligned & Responsive */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-12 w-full max-w-4xl select-text pt-6 mb-10">
+          
+          {/* CARD 1: PSICÓLOGO */}
+          <motion.div
+            initial={{ opacity: 0, x: -35 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="bg-white border-2 border-[#005ca9]/60 hover:border-[#005ca9] hover:shadow-[0_20px_45px_rgba(0,92,169,0.12)] shadow-[0_10px_35px_rgba(0,92,169,0.03)] rounded-[2.5rem] pt-16 pb-8 px-6 relative flex flex-col items-center text-center justify-between min-h-[300px] transition-all duration-300"
+            id="card-portal-psicologo"
+          >
+            {/* Top Floating Circular Icon */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 rounded-full bg-[#005ca9] border-[6px] border-[#f1f8fc] shadow-md flex items-center justify-center text-white">
+              <Brain className="w-10 h-10" />
+            </div>
+
+            <div className="space-y-3 mb-6">
+              <h3 className="text-2xl font-extrabold text-[#005ca9] font-display">
+                Sou Psicólogo
+              </h3>
+              <p className="text-sm text-slate-500 font-bold leading-relaxed max-w-[240px] mx-auto">
+                Acesse o sistema de atendimento psicológico escolar.
+              </p>
+            </div>
+
+            <button
+              onClick={() => handlePortalRedirect("psicologo")}
+              className="w-full max-w-[220px] flex items-center justify-center gap-2 py-3.5 px-6 bg-[#005ca9] hover:bg-[#00417a] text-white font-extrabold text-sm rounded-xl transition-all duration-200 shadow-md hover:shadow-lg active:scale-95 cursor-pointer"
+              id="btn-access-portal-psicologo"
+            >
+              <span>Acessar Portal</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </motion.div>
+
+          {/* CARD 2: PROFISSIONAL DO AEE (Styled Laranja directly per user preference) */}
+          <motion.div
+            initial={{ opacity: 0, x: 35 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="bg-white border-2 border-[#f26522]/60 hover:border-[#f26522] hover:shadow-[0_20px_45px_rgba(242,101,34,0.12)] shadow-[0_10px_35px_rgba(242,101,34,0.03)] rounded-[2.5rem] pt-16 pb-8 px-6 relative flex flex-col items-center text-center justify-between min-h-[300px] transition-all duration-300"
+            id="card-portal-aee"
+          >
+            {/* Top Floating Circular Icon */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 rounded-full bg-[#f26522] border-[6px] border-[#f1f8fc] shadow-md flex items-center justify-center text-white">
+              <Users className="w-9 h-9" />
+            </div>
+
+            <div className="space-y-3 mb-6">
+              <h3 className="text-2xl font-extrabold text-[#f26522] font-display">
+                Sou Profissional do AEE
+              </h3>
+              <p className="text-sm text-slate-500 font-bold leading-relaxed max-w-[240px] mx-auto">
+                Acesse o sistema de Atendimento Educacional Especializado.
+              </p>
+            </div>
+
+            <button
+              onClick={() => handlePortalRedirect("aee")}
+              className="w-full max-w-[220px] flex items-center justify-center gap-2 py-3.5 px-6 bg-[#f26522] hover:bg-[#d95316] text-white font-extrabold text-sm rounded-xl transition-all duration-200 shadow-md hover:shadow-lg active:scale-95 cursor-pointer"
+              id="btn-access-portal-aee"
+            >
+              <span>Acessar Portal</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </motion.div>
+
+        </div>
       </main>
 
       {/* FOOTER */}
@@ -738,28 +764,172 @@ export default function App() {
                   </div>
 
                   {/* CUSTOM LANDING PAGE BACKGROUND SELECTION / LINK */}
-                  <div className="space-y-2 border-t border-slate-100 pt-4">
-                    <label className="flex items-center justify-between text-xs font-bold text-slate-600 tracking-wider uppercase">
-                      <span className="flex items-center gap-1.5">
-                        <ImageIcon className="w-3.5 h-3.5 text-[#005ca9]" />
-                        Link da Imagem de Fundo (URL Pública)
-                      </span>
-                    </label>
-                    <p className="text-[11px] text-slate-400 leading-normal">
-                      Insira uma URL pública direta de qualquer imagem para substituir o fundo da landing page, ou deixe em branco para redefinir para a imagem original oficial do SESI Pernambuco:
-                    </p>
-                    <input
-                      type="text"
-                      placeholder="Ex: https://exemplo.com/imagem-fundo-sesi.jpg"
-                      value={tempBgUrl}
-                      onChange={(e) => setTempBgUrl(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-[#005ca9] focus:outline-none text-sm transition-all font-medium placeholder-slate-400"
-                      id="input-url-bg"
-                    />
+                  <div className="space-y-4 border-t border-slate-100 pt-5">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="flex items-center justify-between text-xs font-bold text-slate-600 tracking-wider uppercase">
+                        <span className="flex items-center gap-1.5">
+                          <ImageIcon className="w-3.5 h-3.5 text-[#005ca9]" />
+                          Personalizar Plano de Fundo
+                        </span>
+                      </label>
+                      <p className="text-[11px] text-slate-400 leading-normal">
+                        Você pode fazer upload de uma imagem do seu computador ou colar um link direto de imagem.
+                      </p>
+                    </div>
+
+                    {/* LIVE BACKGROUND PREVIEW THUMBNAIL */}
+                    <div className="flex items-center gap-3 bg-slate-50 border border-slate-200/60 p-3 rounded-2xl">
+                      <div className="w-20 h-12 rounded-lg overflow-hidden border border-slate-300 bg-slate-100 flex-shrink-0 relative shadow-inner">
+                        <img 
+                          src={tempBgUrl.trim() !== "" ? tempBgUrl : bgImage} 
+                          alt="Prévia do Fundo"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = bgImage;
+                          }}
+                        />
+                      </div>
+                      <div className="text-left overflow-hidden flex-1">
+                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Fundo Ativo na Prévia</div>
+                        <div className="text-[11px] text-slate-700 font-semibold truncate max-w-[240px]">
+                          {tempBgUrl.startsWith("data:") 
+                            ? "✨ Imagem carregada do computador" 
+                            : tempBgUrl.trim() !== "" 
+                              ? tempBgUrl 
+                              : "Imagem Oficial SESI PE (Original)"
+                          }
+                        </div>
+                      </div>
+                      {tempBgUrl.trim() !== "" && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTempBgUrl("");
+                            setToastMessage("Redefinido para o fundo oficial do SESI!");
+                          }}
+                          className="px-2.5 py-1 text-[11px] text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200/50 rounded-lg font-bold transition-all cursor-pointer"
+                        >
+                          Limpar
+                        </button>
+                      )}
+                    </div>
+
+                    {/* BACKGROUND SIZE MODE CONTROLLER */}
+                    <div className="space-y-2 bg-slate-50/50 border border-slate-150 p-3 rounded-2xl">
+                      <span className="text-[10px] text-slate-600 font-bold block uppercase tracking-wider font-sans">Como ajustar a imagem de fundo:</span>
+                      <div className="grid grid-cols-3 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTempBgSize("contain");
+                            setToastMessage("Modo: Proporcional (Sem esticar)");
+                          }}
+                          className={`p-2 py-3 rounded-xl border text-[11px] font-bold flex flex-col items-center gap-1 justify-center transition-all cursor-pointer ${
+                            tempBgSize === "contain"
+                              ? "bg-white border-[#005ca9] text-[#005ca9] shadow-sm ring-2 ring-blue-100"
+                              : "bg-white/60 border-slate-200 hover:bg-slate-50 text-slate-600"
+                          }`}
+                        >
+                          <span className="font-bold">Proporcional</span>
+                          <span className="text-[8px] text-slate-400 font-medium leading-none">Sem esticar / Sem cortes</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTempBgSize("cover");
+                            setToastMessage("Modo: Preencher Tela (Pode cortar)");
+                          }}
+                          className={`p-2 py-3 rounded-xl border text-[11px] font-bold flex flex-col items-center gap-1 justify-center transition-all cursor-pointer ${
+                            tempBgSize === "cover"
+                              ? "bg-white border-[#005ca9] text-[#005ca9] shadow-sm ring-2 ring-blue-100"
+                              : "bg-white/60 border-slate-200 hover:bg-slate-50 text-slate-600"
+                          }`}
+                        >
+                          <span className="font-bold">Preencher</span>
+                          <span className="text-[8px] text-slate-400 font-medium leading-none">Mantém a proporção</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTempBgSize("100% 100%");
+                            setToastMessage("Modo: Forçado (Pode esticar)");
+                          }}
+                          className={`p-2 py-3 rounded-xl border text-[11px] font-bold flex flex-col items-center gap-1 justify-center transition-all cursor-pointer ${
+                            tempBgSize === "100% 100%"
+                              ? "bg-white border-[#005ca9] text-[#005ca9] shadow-sm ring-2 ring-blue-100"
+                              : "bg-white/60 border-slate-200 hover:bg-slate-50 text-slate-600"
+                          }`}
+                        >
+                          <span className="font-bold">Esticar</span>
+                          <span className="text-[8px] text-slate-400 font-medium leading-none">Cobre tudo (Distorce)</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* DRAG-AND-DROP FILE UPLOADER */}
+                    <div 
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setIsDraggingBg(true);
+                      }}
+                      onDragLeave={() => setIsDraggingBg(false)}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setIsDraggingBg(false);
+                        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                          processBgFile(e.dataTransfer.files[0]);
+                        }
+                      }}
+                      onClick={() => document.getElementById("file-upload-bg")?.click()}
+                      className={`border-2 border-dashed rounded-2xl p-5 text-center flex flex-col items-center justify-center gap-2 cursor-pointer transition-all duration-300 ${
+                        isDraggingBg 
+                          ? "border-[#005ca9] bg-blue-50/70 shadow-inner scale-[0.99]" 
+                          : "border-slate-300 hover:border-[#005ca9] hover:bg-slate-50/70"
+                      }`}
+                    >
+                      <input 
+                        type="file" 
+                        id="file-upload-bg" 
+                        accept="image/*" 
+                        className="hidden" 
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files[0]) {
+                            processBgFile(e.target.files[0]);
+                          }
+                        }}
+                      />
+                      <div className="p-2.5 bg-blue-50 text-[#005ca9] rounded-full">
+                        <ImageIcon className="w-5 h-5 text-[#005ca9]" />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs font-bold text-slate-700">Fazer Upload do Computador</p>
+                        <p className="text-[10px] text-slate-400 font-medium">Arraste e solte ou clique para selecionar (PNG, JPG, WEBP)</p>
+                      </div>
+                    </div>
+
+                    {/* LINK INPUT FIELD */}
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Ou insira uma URL de imagem pública:</span>
+                      {tempBgUrl.startsWith("data:") ? (
+                        <div className="p-3 bg-blue-50/50 border border-blue-100 rounded-xl text-left text-xs text-blue-800 font-semibold flex items-center justify-between animate-fade-in">
+                          <span>Imagem carregada ativa</span>
+                          <span className="text-[10px] text-slate-400 font-normal italic">(use o botão limpar acima para voltar para URL)</span>
+                        </div>
+                      ) : (
+                        <input
+                          type="text"
+                          placeholder="Ex: https://imagens.com/meu-fundo-sesi.jpg"
+                          value={tempBgUrl}
+                          onChange={(e) => setTempBgUrl(e.target.value)}
+                          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-[#005ca9] focus:outline-none text-sm transition-all font-medium placeholder-slate-400 w-full"
+                          id="input-url-bg"
+                        />
+                      )}
+                    </div>
 
                     {/* Background preset choices for quick testing */}
-                    <div className="space-y-1.5 pt-1">
-                      <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Planos de fundo pré-definidos para teste rápido:</span>
+                    <div className="space-y-2 pt-1">
+                      <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider font-sans">Planos de fundo pré-definidos para teste rápido:</span>
                       <div className="grid grid-cols-2 gap-2 text-center">
                         <button
                           type="button"
@@ -767,10 +937,10 @@ export default function App() {
                             setTempBgUrl("");
                             setToastMessage("Selecionado: Imagem Oficial SESI PE");
                           }}
-                          className={`p-2.5 rounded-xl border text-xs font-bold flex flex-col items-center gap-1 justify-center transition-all ${
+                          className={`p-2.5 rounded-xl border text-xs font-bold flex flex-col items-center gap-1 justify-center transition-all cursor-pointer ${
                             tempBgUrl === "" 
-                              ? "bg-blue-50 border-[#005ca9] text-[#005ca9]" 
-                              : "bg-white border-slate-200 hover:bg-slate-50 text-slate-650"
+                              ? "bg-blue-50 border-[#005ca9] text-[#005ca9] shadow-sm" 
+                              : "bg-white border-slate-200 hover:bg-slate-50 text-slate-600"
                           }`}
                         >
                           <Compass className="w-4 h-4 text-[#005ca9]" />
@@ -783,10 +953,10 @@ export default function App() {
                             setTempBgUrl("https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=1470&auto=format&fit=cover");
                             setToastMessage("Selecionando: Gradiente abstrato calmo");
                           }}
-                          className={`p-2.5 rounded-xl border text-xs font-bold flex flex-col items-center gap-1 justify-center transition-all ${
+                          className={`p-2.5 rounded-xl border text-xs font-bold flex flex-col items-center gap-1 justify-center transition-all cursor-pointer ${
                             tempBgUrl === "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=1470&auto=format&fit=cover" 
-                              ? "bg-blue-50 border-[#005ca9] text-[#005ca9]" 
-                              : "bg-white border-slate-200 hover:bg-slate-50 text-slate-650"
+                              ? "bg-blue-50 border-[#005ca9] text-[#005ca9] shadow-sm" 
+                              : "bg-white border-slate-200 hover:bg-slate-50 text-slate-600"
                           }`}
                         >
                           <Sparkles className="w-4 h-4 text-[#f26522]" />
