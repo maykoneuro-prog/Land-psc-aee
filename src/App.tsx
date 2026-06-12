@@ -20,6 +20,8 @@ import {
   LogIn
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+// @ts-ignore
+import bgImage from "./assets/images/sesi_bg_official_1781270758532.jpg";
 
 // Default configuration placeholders
 const DEFAULT_PSICOLOGO_URL = "https://new-psc.vercel.app/login";
@@ -139,9 +141,9 @@ export default function App() {
       if (saved && saved.trim() !== "" && saved.trim() !== "undefined" && saved.trim() !== "null") {
         return saved.trim();
       }
-      return "";
+      return bgImage;
     } catch {
-      return "";
+      return bgImage;
     }
   });
   const [bgSize, setBgSize] = useState<string>(() => {
@@ -342,7 +344,7 @@ export default function App() {
     setPortalPsicologoUrl(tempPsicologoUrl);
     setPortalAeeUrl(tempAeeUrl);
     setBgInputUrl(tempBgUrl);
-    setActiveBg(tempBgUrl.trim() !== "" ? tempBgUrl : "");
+    setActiveBg(tempBgUrl.trim() !== "" ? tempBgUrl : bgImage);
     setBgSize(tempBgSize);
     setIsConfigOpen(false);
 
@@ -954,16 +956,12 @@ export default function App() {
 
                     {/* LIVE BACKGROUND PREVIEW THUMBNAIL */}
                     <div className="flex items-center gap-3 bg-slate-50 border border-slate-200/60 p-3 rounded-2xl">
-                      <div className="w-20 h-12 rounded-lg overflow-hidden border border-slate-300 bg-gradient-to-br from-[#f0f9ff] to-[#e0f2fe] flex-shrink-0 relative shadow-inner flex items-center justify-center">
-                        {tempBgUrl.trim() !== "" ? (
-                          <img 
-                            src={tempBgUrl} 
-                            alt="Prévia do Fundo"
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <ImageIcon className="w-5 h-5 text-[#005ca9]" />
-                        )}
+                      <div className="w-20 h-12 rounded-lg overflow-hidden border border-slate-300 bg-gradient-to-br from-[#f0f9ff] to-[#e0f2fe] flex-shrink-0 relative shadow-inner">
+                        <img 
+                          src={tempBgUrl.trim() !== "" ? tempBgUrl : bgImage} 
+                          alt="Prévia do Fundo"
+                          className="w-full h-full object-cover"
+                        />
                       </div>
                       <div className="text-left overflow-hidden flex-1">
                         <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Fundo Ativo na Prévia</div>
@@ -972,7 +970,7 @@ export default function App() {
                             ? "✨ Imagem carregada do computador" 
                             : tempBgUrl.trim() !== "" 
                               ? tempBgUrl 
-                              : "Sem imagem (Fundo Gradiente)"
+                              : "Imagem Oficial SESI PE"
                           }
                         </div>
                       </div>
@@ -981,7 +979,7 @@ export default function App() {
                           type="button"
                           onClick={() => {
                             setTempBgUrl("");
-                            setToastMessage("Plano de fundo redefinido.");
+                            setToastMessage("Restaurado para o plano de fundo oficial do SESI!");
                           }}
                           className="px-2.5 py-1 text-[11px] text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200/50 rounded-lg font-bold transition-all cursor-pointer"
                         >
