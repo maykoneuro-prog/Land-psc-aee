@@ -24,6 +24,7 @@ import { motion, AnimatePresence } from "motion/react";
 // Default configuration placeholders
 const DEFAULT_PSICOLOGO_URL = "https://new-psc.vercel.app/login";
 const DEFAULT_AEE_URL = "https://sge-aee.vercel.app/login";
+const DEFAULT_BG_URL = "https://i.imgur.com/5uKuvol.png";
 
 // Simple IndexedDB Helper to persist background image safely without hitting localStorage 5MB size limits
 const DB_NAME = "SesiPortalDB";
@@ -139,9 +140,9 @@ export default function App() {
       if (saved && saved.trim() !== "" && saved.trim() !== "undefined" && saved.trim() !== "null") {
         return saved.trim();
       }
-      return "";
+      return DEFAULT_BG_URL;
     } catch {
-      return "";
+      return DEFAULT_BG_URL;
     }
   });
   const [bgSize, setBgSize] = useState<string>(() => {
@@ -342,7 +343,7 @@ export default function App() {
     setPortalPsicologoUrl(tempPsicologoUrl);
     setPortalAeeUrl(tempAeeUrl);
     setBgInputUrl(tempBgUrl);
-    setActiveBg(tempBgUrl.trim() !== "" ? tempBgUrl : "");
+    setActiveBg(tempBgUrl.trim() !== "" ? tempBgUrl : DEFAULT_BG_URL);
     setBgSize(tempBgSize);
     setIsConfigOpen(false);
 
@@ -948,29 +949,25 @@ export default function App() {
                         </span>
                       </label>
                       <p className="text-[11px] text-slate-400 leading-normal">
-                        Cole o link público de qualquer imagem da internet para definir como plano de fundo do portal. Deixe em branco para usar o fundo gradiente azul limpo.
+                        Cole o link público de qualquer imagem da internet para definir como plano de fundo do portal. Deixe em branco para restaurar a imagem padrão do SESI.
                       </p>
                     </div>
 
                     {/* LIVE BACKGROUND PREVIEW THUMBNAIL */}
                     <div className="flex items-center gap-3 bg-slate-50 border border-slate-200/60 p-3 rounded-2xl">
-                      <div className="w-20 h-12 rounded-lg overflow-hidden border border-slate-300 bg-gradient-to-br from-[#f0f9ff] to-[#e0f2fe] flex-shrink-0 relative shadow-inner flex items-center justify-center">
-                        {tempBgUrl.trim() !== "" ? (
-                          <img 
-                            src={tempBgUrl} 
-                            alt="Prévia do Fundo"
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <ImageIcon className="w-5 h-5 text-[#005ca9]" />
-                        )}
+                      <div className="w-20 h-12 rounded-lg overflow-hidden border border-slate-300 bg-gradient-to-br from-[#f0f9ff] to-[#e0f2fe] flex-shrink-0 relative shadow-inner">
+                        <img 
+                          src={tempBgUrl.trim() !== "" ? tempBgUrl : DEFAULT_BG_URL} 
+                          alt="Prévia do Fundo"
+                          className="w-full h-full object-cover animate-fade-in"
+                        />
                       </div>
                       <div className="text-left overflow-hidden flex-1">
                         <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Fundo Ativo na Prévia</div>
                         <div className="text-[11px] text-slate-700 font-semibold truncate max-w-[240px]">
                           {tempBgUrl.trim() !== "" 
                             ? tempBgUrl 
-                            : "Sem Imagem (Apenas Gradiente)"
+                            : "Imagem Padrão do SESI (Ativa)"
                           }
                         </div>
                       </div>
@@ -979,11 +976,11 @@ export default function App() {
                           type="button"
                           onClick={() => {
                             setTempBgUrl("");
-                            setToastMessage("Plano de fundo limpo.");
+                            setToastMessage("Restaurado para a imagem de fundo padrão do SESI!");
                           }}
-                          className="px-2.5 py-1 text-[11px] text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200/50 rounded-lg font-bold transition-all cursor-pointer"
+                          className="px-2.5 py-1 text-[11px] text-[#005ca9] hover:text-[#004b88] bg-blue-50 hover:bg-blue-100 border border-blue-200/50 rounded-lg font-bold transition-all cursor-pointer"
                         >
-                          Limpar
+                          Restaurar Padrão
                         </button>
                       )}
                     </div>
