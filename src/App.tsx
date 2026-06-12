@@ -27,26 +27,117 @@ import bgImage from "./assets/images/sesi_bg_original_1781023275603.png";
 const DEFAULT_PSICOLOGO_URL = "";
 const DEFAULT_AEE_URL = "";
 
+// Simple IndexedDB Helper to persist background image safely without hitting localStorage 5MB size limits
+const DB_NAME = "SesiPortalDB";
+const STORE_NAME = "settings";
+const BG_KEY = "SESI_PORTAL_BG_DATA";
+
+function initDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    try {
+      const request = indexedDB.open(DB_NAME, 1);
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME);
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error || new Error("Failed to open IndexedDB"));
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+function saveBgToIndexedDB(base64Data: string): Promise<void> {
+  return initDB().then((db) => {
+    return new Promise<void>((resolve, reject) => {
+      try {
+        const tx = db.transaction(STORE_NAME, "readwrite");
+        const store = tx.objectStore(STORE_NAME);
+        const request = store.put(base64Data, BG_KEY);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error || new Error("Failed to write to IndexedDB"));
+      } catch (err) {
+        reject(err);
+      }
+    });
+  });
+}
+
+function getBgFromIndexedDB(): Promise<string> {
+  return initDB().then((db) => {
+    return new Promise<string>((resolve, reject) => {
+      try {
+        const tx = db.transaction(STORE_NAME, "readonly");
+        const store = tx.objectStore(STORE_NAME);
+        const request = store.get(BG_KEY);
+        request.onsuccess = () => resolve(request.result || "");
+        request.onerror = () => reject(request.error || new Error("Failed to read from IndexedDB"));
+      } catch (err) {
+        reject(err);
+      }
+    });
+  });
+}
+
+function clearBgFromIndexedDB(): Promise<void> {
+  return initDB().then((db) => {
+    return new Promise<void>((resolve, reject) => {
+      try {
+        const tx = db.transaction(STORE_NAME, "readwrite");
+        const store = tx.objectStore(STORE_NAME);
+        const request = store.delete(BG_KEY);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error || new Error("Failed to delete from IndexedDB"));
+      } catch (err) {
+        reject(err);
+      }
+    });
+  });
+}
+
 export default function App() {
   // Configurable URLs stored in localStorage or fallback to defaults
   const [portalPsicologoUrl, setPortalPsicologoUrl] = useState<string>(() => {
-    return localStorage.getItem("SESI_PORTAL_PSICOLOGO_URL") || DEFAULT_PSICOLOGO_URL;
+    try {
+      return localStorage.getItem("SESI_PORTAL_PSICOLOGO_URL") || DEFAULT_PSICOLOGO_URL;
+    } catch {
+      return DEFAULT_PSICOLOGO_URL;
+    }
   });
   const [portalAeeUrl, setPortalAeeUrl] = useState<string>(() => {
-    return localStorage.getItem("SESI_PORTAL_AEE_URL") || DEFAULT_AEE_URL;
+    try {
+      return localStorage.getItem("SESI_PORTAL_AEE_URL") || DEFAULT_AEE_URL;
+    } catch {
+      return DEFAULT_AEE_URL;
+    }
   });
 
   // Background Image Configuration
   const [bgInputUrl, setBgInputUrl] = useState<string>(() => {
-    const saved = localStorage.getItem("SESI_PORTAL_BG_URL");
-    return (saved && saved.trim() !== "" && saved.trim() !== "undefined") ? saved.trim() : "";
+    try {
+      const saved = localStorage.getItem("SESI_PORTAL_BG_URL");
+      return (saved && saved.trim() !== "" && saved.trim() !== "undefined") ? saved.trim() : "";
+    } catch {
+      return "";
+    }
   });
   const [activeBg, setActiveBg] = useState<string>(() => {
-    const saved = localStorage.getItem("SESI_PORTAL_BG_URL");
-    return (saved && saved.trim() !== "" && saved.trim() !== "undefined") ? saved.trim() : bgImage;
+    try {
+      const saved = localStorage.getItem("SESI_PORTAL_BG_URL");
+      return (saved && saved.trim() !== "" && saved.trim() !== "undefined") ? saved.trim() : bgImage;
+    } catch {
+      return bgImage;
+    }
   });
   const [bgSize, setBgSize] = useState<string>(() => {
-    return localStorage.getItem("SESI_PORTAL_BG_SIZE") || "contain";
+    try {
+      return localStorage.getItem("SESI_PORTAL_BG_SIZE") || "contain";
+    } catch {
+      return "contain";
+    }
   });
 
   const [isDraggingBg, setIsDraggingBg] = useState(false);
@@ -141,6 +232,27 @@ export default function App() {
     }
   }, [toastMessage]);
 
+  // Restore background image from IndexedDB on initial load if saved there
+  useEffect(() => {
+    try {
+      const storageType = localStorage.getItem("SESI_PORTAL_BG_URL_STORAGE_TYPE");
+      if (storageType === "indexeddb") {
+        getBgFromIndexedDB()
+          .then((storedBg) => {
+            if (storedBg && storedBg.trim() !== "") {
+              setActiveBg(storedBg);
+              setBgInputUrl(storedBg);
+            }
+          })
+          .catch((err) => {
+            console.error("Erro ao recuperar plano de fundo do IndexedDB:", err);
+          });
+      }
+    } catch (err) {
+      console.warn("Storage API error on initialization:", err);
+    }
+  }, []);
+
   // Handle click on Config - Prompt Google Sign-In if not authenticated
   const handleOpenConfig = () => {
     if (isAuthenticated) {
@@ -207,21 +319,67 @@ export default function App() {
   };
 
   // Save Config to storage
-  const handleSaveConfig = (e: React.FormEvent) => {
+  const handleSaveConfig = async (e: React.FormEvent) => {
     e.preventDefault();
-    localStorage.setItem("SESI_PORTAL_PSICOLOGO_URL", tempPsicologoUrl);
-    localStorage.setItem("SESI_PORTAL_AEE_URL", tempAeeUrl);
-    localStorage.setItem("SESI_PORTAL_BG_URL", tempBgUrl);
-    localStorage.setItem("SESI_PORTAL_BG_SIZE", tempBgSize);
 
+    // 1. Update React memory state instantly for immediate application response
     setPortalPsicologoUrl(tempPsicologoUrl);
     setPortalAeeUrl(tempAeeUrl);
     setBgInputUrl(tempBgUrl);
     setActiveBg(tempBgUrl.trim() !== "" ? tempBgUrl : bgImage);
     setBgSize(tempBgSize);
-    
     setIsConfigOpen(false);
-    
+
+    // 2. Safely perform durable storage modifications wrapper by wrapper so none of them can block each other.
+    try {
+      localStorage.setItem("SESI_PORTAL_PSICOLOGO_URL", tempPsicologoUrl);
+    } catch (err) {
+      console.warn("Could not save portal psicologo URL to localStorage:", err);
+    }
+
+    try {
+      localStorage.setItem("SESI_PORTAL_AEE_URL", tempAeeUrl);
+    } catch (err) {
+      console.warn("Could not save portal AEE URL to localStorage:", err);
+    }
+
+    try {
+      localStorage.setItem("SESI_PORTAL_BG_SIZE", tempBgSize);
+    } catch (err) {
+      console.warn("Could not save background size mode to localStorage:", err);
+    }
+
+    // Safely save background to storage (IndexedDB for base64 uploads, normal string for URLs)
+    if (tempBgUrl.startsWith("data:")) {
+      try {
+        await saveBgToIndexedDB(tempBgUrl);
+        
+        // Save flag in localStorage so it persists correctly
+        localStorage.setItem("SESI_PORTAL_BG_URL_STORAGE_TYPE", "indexeddb");
+        
+        // Remove from localStorage to keep storage clean and under 5MB limits
+        localStorage.removeItem("SESI_PORTAL_BG_URL");
+      } catch (err) {
+        console.warn("Failed to store background in IndexedDB, attempting localStorage fallback:", err);
+        try {
+          localStorage.setItem("SESI_PORTAL_BG_URL", tempBgUrl);
+          localStorage.removeItem("SESI_PORTAL_BG_URL_STORAGE_TYPE");
+        } catch (storageErr) {
+          console.error("Critical: Could not store base64 in either storage:", storageErr);
+          setToastMessage("Aviso: Imagem de fundo é muito pesada e ficará disponível apenas nesta sessão.");
+        }
+      }
+    } else {
+      // Direct Web URL or Empty default
+      try {
+        localStorage.setItem("SESI_PORTAL_BG_URL", tempBgUrl);
+        localStorage.removeItem("SESI_PORTAL_BG_URL_STORAGE_TYPE");
+        await clearBgFromIndexedDB().catch(() => {});
+      } catch (err) {
+        console.warn("Could not save background URL to localStorage:", err);
+      }
+    }
+
     // Show premium toast feedback
     setToastMessage("Configurações salvas com sucesso!");
   };
