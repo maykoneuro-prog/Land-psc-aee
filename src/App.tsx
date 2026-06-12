@@ -24,8 +24,8 @@ import { motion, AnimatePresence } from "motion/react";
 import bgImage from "./assets/images/sesi_bg_original_1781023275603.png";
 
 // Default configuration placeholders
-const DEFAULT_PSICOLOGO_URL = "";
-const DEFAULT_AEE_URL = "";
+const DEFAULT_PSICOLOGO_URL = "https://new-psc.vercel.app/login";
+const DEFAULT_AEE_URL = "https://sge-aee.vercel.app/login";
 
 // Simple IndexedDB Helper to persist background image safely without hitting localStorage 5MB size limits
 const DB_NAME = "SesiPortalDB";
@@ -102,14 +102,22 @@ export default function App() {
   // Configurable URLs stored in localStorage or fallback to defaults
   const [portalPsicologoUrl, setPortalPsicologoUrl] = useState<string>(() => {
     try {
-      return localStorage.getItem("SESI_PORTAL_PSICOLOGO_URL") || DEFAULT_PSICOLOGO_URL;
+      const saved = localStorage.getItem("SESI_PORTAL_PSICOLOGO_URL");
+      if (saved && saved.trim() !== "" && saved.trim() !== "undefined" && saved.trim() !== "null") {
+        return saved.trim();
+      }
+      return DEFAULT_PSICOLOGO_URL;
     } catch {
       return DEFAULT_PSICOLOGO_URL;
     }
   });
   const [portalAeeUrl, setPortalAeeUrl] = useState<string>(() => {
     try {
-      return localStorage.getItem("SESI_PORTAL_AEE_URL") || DEFAULT_AEE_URL;
+      const saved = localStorage.getItem("SESI_PORTAL_AEE_URL");
+      if (saved && saved.trim() !== "" && saved.trim() !== "undefined" && saved.trim() !== "null") {
+        return saved.trim();
+      }
+      return DEFAULT_AEE_URL;
     } catch {
       return DEFAULT_AEE_URL;
     }
@@ -119,7 +127,10 @@ export default function App() {
   const [bgInputUrl, setBgInputUrl] = useState<string>(() => {
     try {
       const saved = localStorage.getItem("SESI_PORTAL_BG_URL");
-      return (saved && saved.trim() !== "" && saved.trim() !== "undefined") ? saved.trim() : "";
+      if (saved && saved.trim() !== "" && saved.trim() !== "undefined" && saved.trim() !== "null") {
+        return saved.trim();
+      }
+      return "";
     } catch {
       return "";
     }
@@ -127,14 +138,21 @@ export default function App() {
   const [activeBg, setActiveBg] = useState<string>(() => {
     try {
       const saved = localStorage.getItem("SESI_PORTAL_BG_URL");
-      return (saved && saved.trim() !== "" && saved.trim() !== "undefined") ? saved.trim() : bgImage;
+      if (saved && saved.trim() !== "" && saved.trim() !== "undefined" && saved.trim() !== "null") {
+        return saved.trim();
+      }
+      return bgImage;
     } catch {
       return bgImage;
     }
   });
   const [bgSize, setBgSize] = useState<string>(() => {
     try {
-      return localStorage.getItem("SESI_PORTAL_BG_SIZE") || "contain";
+      const saved = localStorage.getItem("SESI_PORTAL_BG_SIZE");
+      if (saved && saved.trim() !== "" && saved.trim() !== "undefined" && saved.trim() !== "null") {
+        return saved.trim();
+      }
+      return "contain";
     } catch {
       return "contain";
     }
@@ -402,12 +420,13 @@ export default function App() {
       id="sesi-landing-root"
       className="relative min-h-screen w-full flex flex-col justify-between overflow-x-hidden font-sans select-none bg-[#f1f8fc]"
       style={{
-        // Dynamic background support with safe quotes wrapping
-        backgroundImage: `url("${activeBg}"), linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 30%, #f6fdf9 65%, #fffbf2 100%)`,
+        // Dynamic background support with safe quotes wrapping and seamless color matching
+        backgroundImage: `url("${activeBg}"), linear-gradient(to bottom, #f1f8fc 0%, #ffffff 50%, #f1f8fc 100%)`,
         backgroundSize: bgSize,
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
-        backgroundAttachment: "fixed"
+        backgroundAttachment: "fixed",
+        backgroundColor: "#ffffff"
       }}
     >
       {/* Soft gradient overall overlay to ensure absolute readability and gentle focus on content */}
