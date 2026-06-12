@@ -20,8 +20,6 @@ import {
   LogIn
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-// @ts-ignore
-import bgImage from "./assets/images/sesi_bg_official_1781270758532.jpg";
 
 // Default configuration placeholders
 const DEFAULT_PSICOLOGO_URL = "https://new-psc.vercel.app/login";
@@ -141,9 +139,9 @@ export default function App() {
       if (saved && saved.trim() !== "" && saved.trim() !== "undefined" && saved.trim() !== "null") {
         return saved.trim();
       }
-      return bgImage;
+      return "";
     } catch {
-      return bgImage;
+      return "";
     }
   });
   const [bgSize, setBgSize] = useState<string>(() => {
@@ -344,7 +342,7 @@ export default function App() {
     setPortalPsicologoUrl(tempPsicologoUrl);
     setPortalAeeUrl(tempAeeUrl);
     setBgInputUrl(tempBgUrl);
-    setActiveBg(tempBgUrl.trim() !== "" ? tempBgUrl : bgImage);
+    setActiveBg(tempBgUrl.trim() !== "" ? tempBgUrl : "");
     setBgSize(tempBgSize);
     setIsConfigOpen(false);
 
@@ -404,9 +402,9 @@ export default function App() {
 
   // Pre-configure demo URLs for quick testing
   const handleLoadDemoUrls = () => {
-    setTempPsicologoUrl("https://pe.sesi.org.br");
-    setTempAeeUrl("https://pe.sesi.org.br");
-    setToastMessage("URLs demo preenchidas! Clique em Salvar.");
+    setTempPsicologoUrl("https://new-psc.vercel.app/login");
+    setTempAeeUrl("https://sge-aee.vercel.app/login");
+    setToastMessage("Links oficiais do SESI PE preenchidos! Clique em Salvar.");
   };
 
   const handleClearUrls = () => {
@@ -950,27 +948,29 @@ export default function App() {
                         </span>
                       </label>
                       <p className="text-[11px] text-slate-400 leading-normal">
-                        Você pode fazer upload de uma imagem do seu computador ou colar um link direto de imagem.
+                        Cole o link público de qualquer imagem da internet para definir como plano de fundo do portal. Deixe em branco para usar o fundo gradiente azul limpo.
                       </p>
                     </div>
 
                     {/* LIVE BACKGROUND PREVIEW THUMBNAIL */}
                     <div className="flex items-center gap-3 bg-slate-50 border border-slate-200/60 p-3 rounded-2xl">
-                      <div className="w-20 h-12 rounded-lg overflow-hidden border border-slate-300 bg-gradient-to-br from-[#f0f9ff] to-[#e0f2fe] flex-shrink-0 relative shadow-inner">
-                        <img 
-                          src={tempBgUrl.trim() !== "" ? tempBgUrl : bgImage} 
-                          alt="Prévia do Fundo"
-                          className="w-full h-full object-cover"
-                        />
+                      <div className="w-20 h-12 rounded-lg overflow-hidden border border-slate-300 bg-gradient-to-br from-[#f0f9ff] to-[#e0f2fe] flex-shrink-0 relative shadow-inner flex items-center justify-center">
+                        {tempBgUrl.trim() !== "" ? (
+                          <img 
+                            src={tempBgUrl} 
+                            alt="Prévia do Fundo"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <ImageIcon className="w-5 h-5 text-[#005ca9]" />
+                        )}
                       </div>
                       <div className="text-left overflow-hidden flex-1">
                         <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Fundo Ativo na Prévia</div>
                         <div className="text-[11px] text-slate-700 font-semibold truncate max-w-[240px]">
-                          {tempBgUrl.startsWith("data:") 
-                            ? "✨ Imagem carregada do computador" 
-                            : tempBgUrl.trim() !== "" 
-                              ? tempBgUrl 
-                              : "Imagem Oficial SESI PE"
+                          {tempBgUrl.trim() !== "" 
+                            ? tempBgUrl 
+                            : "Sem Imagem (Apenas Gradiente)"
                           }
                         </div>
                       </div>
@@ -979,13 +979,26 @@ export default function App() {
                           type="button"
                           onClick={() => {
                             setTempBgUrl("");
-                            setToastMessage("Restaurado para o plano de fundo oficial do SESI!");
+                            setToastMessage("Plano de fundo limpo.");
                           }}
                           className="px-2.5 py-1 text-[11px] text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200/50 rounded-lg font-bold transition-all cursor-pointer"
                         >
                           Limpar
                         </button>
                       )}
+                    </div>
+
+                    {/* LINK INPUT FIELD */}
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">URL do Link da Imagem Pública:</span>
+                      <input
+                        type="text"
+                        placeholder="Ex: https://imagens.com/meu-fundo-sesi.jpg"
+                        value={tempBgUrl}
+                        onChange={(e) => setTempBgUrl(e.target.value)}
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-[#005ca9] focus:outline-none text-sm transition-all font-medium placeholder-slate-400 w-full"
+                        id="input-url-bg"
+                      />
                     </div>
 
                     {/* BACKGROUND SIZE MODE CONTROLLER */}
@@ -1036,105 +1049,6 @@ export default function App() {
                         >
                           <span className="font-bold">Esticar</span>
                           <span className="text-[8px] text-slate-400 font-medium leading-none">Cobre tudo (Distorce)</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* DRAG-AND-DROP FILE UPLOADER */}
-                    <div 
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        setIsDraggingBg(true);
-                      }}
-                      onDragLeave={() => setIsDraggingBg(false)}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        setIsDraggingBg(false);
-                        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                          processBgFile(e.dataTransfer.files[0]);
-                        }
-                      }}
-                      onClick={() => document.getElementById("file-upload-bg")?.click()}
-                      className={`border-2 border-dashed rounded-2xl p-5 text-center flex flex-col items-center justify-center gap-2 cursor-pointer transition-all duration-300 ${
-                        isDraggingBg 
-                          ? "border-[#005ca9] bg-blue-50/70 shadow-inner scale-[0.99]" 
-                          : "border-slate-300 hover:border-[#005ca9] hover:bg-slate-50/70"
-                      }`}
-                    >
-                      <input 
-                        type="file" 
-                        id="file-upload-bg" 
-                        accept="image/*" 
-                        className="hidden" 
-                        onChange={(e) => {
-                          if (e.target.files && e.target.files[0]) {
-                            processBgFile(e.target.files[0]);
-                          }
-                        }}
-                      />
-                      <div className="p-2.5 bg-blue-50 text-[#005ca9] rounded-full">
-                        <ImageIcon className="w-5 h-5 text-[#005ca9]" />
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-xs font-bold text-slate-700">Fazer Upload do Computador</p>
-                        <p className="text-[10px] text-slate-400 font-medium">Arraste e solte ou clique para selecionar (PNG, JPG, WEBP)</p>
-                      </div>
-                    </div>
-
-                    {/* LINK INPUT FIELD */}
-                    <div className="space-y-1.5">
-                      <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Ou insira uma URL de imagem pública:</span>
-                      {tempBgUrl.startsWith("data:") ? (
-                        <div className="p-3 bg-blue-50/50 border border-blue-100 rounded-xl text-left text-xs text-blue-800 font-semibold flex items-center justify-between animate-fade-in">
-                          <span>Imagem carregada ativa</span>
-                          <span className="text-[10px] text-slate-400 font-normal italic">(use o botão limpar acima para voltar para URL)</span>
-                        </div>
-                      ) : (
-                        <input
-                          type="text"
-                          placeholder="Ex: https://imagens.com/meu-fundo-sesi.jpg"
-                          value={tempBgUrl}
-                          onChange={(e) => setTempBgUrl(e.target.value)}
-                          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-[#005ca9] focus:outline-none text-sm transition-all font-medium placeholder-slate-400 w-full"
-                          id="input-url-bg"
-                        />
-                      )}
-                    </div>
-
-                    {/* Background preset choices for quick testing */}
-                    <div className="space-y-2 pt-1">
-                      <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider font-sans">Planos de fundo pré-definidos para teste rápido:</span>
-                      <div className="grid grid-cols-2 gap-2 text-center">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setTempBgUrl("");
-                            setToastMessage("Selecionado: Imagem Oficial SESI PE");
-                          }}
-                          className={`p-2.5 rounded-xl border text-xs font-bold flex flex-col items-center gap-1 justify-center transition-all cursor-pointer ${
-                            tempBgUrl === "" 
-                              ? "bg-blue-50 border-[#005ca9] text-[#005ca9] shadow-sm" 
-                              : "bg-white border-slate-200 hover:bg-slate-50 text-slate-600"
-                          }`}
-                        >
-                          <Compass className="w-4 h-4 text-[#005ca9]" />
-                          <span>Imagem Oficial SESI PE</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setTempBgUrl("https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=1470&auto=format&fit=cover");
-                            setToastMessage("Selecionando: Gradiente abstrato calmo");
-                          }}
-                          className={`p-2.5 rounded-xl border text-xs font-bold flex flex-col items-center gap-1 justify-center transition-all cursor-pointer ${
-                            tempBgUrl === "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=1470&auto=format&fit=cover" 
-                              ? "bg-blue-50 border-[#005ca9] text-[#005ca9] shadow-sm" 
-                              : "bg-white border-slate-200 hover:bg-slate-50 text-slate-600"
-                          }`}
-                        >
-                          <Sparkles className="w-4 h-4 text-[#f26522]" />
-                          <span>Gradiente Abstrato SESI</span>
                         </button>
                       </div>
                     </div>
